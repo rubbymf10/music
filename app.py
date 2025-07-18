@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 # --- Styling dark mode ---
@@ -83,31 +82,21 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- Load Data ---
+# --- Load Data from ZIP ---
 @st.cache_data
+
 def load_data():
     zip_path = "spotify_songs.csv.zip"
-    extract_path = "spotify_data"
+    with zipfile.ZipFile(zip_path, 'r') as z:
+        csv_filename = z.namelist()[0]
+        with z.open(csv_filename) as f:
+            df = pd.read_csv(f)
 
-    if not os.path.exists(extract_path):
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            zip_ref.extractall(extract_path)
+    fitur_wajib = ["track_popularity", "playlist_genre", "playlist_subgenre", "tempo", "duration_ms", "energy", "danceability"]
+    df_clean = df.dropna(subset=fitur_wajib)
 
-    csv_path = os.path.join(extract_path, "spotify_songs.csv")
-    df = pd.read_csv(csv_path)
-
-    df = df.rename(columns={
-        "track_name": "judul_musik",
-        "track_artist": "artist",
-        "track_popularity": "popularity",
-        "track_album_name": "album",
-        "playlist_genre": "genre",
-        "playlist_subgenre": "subgenre"
-    })
-    df_clean = df.dropna(subset=["popularity", "genre", "subgenre", "tempo", "duration_ms", "energy", "danceability"])
-
-    low_thresh = df_clean['popularity'].quantile(0.33)
-    high_thresh = df_clean['popularity'].quantile(0.66)
+    low_thresh = df_clean['track_popularity'].quantile(0.33)
+    high_thresh = df_clean['track_popularity'].quantile(0.66)
 
     def categorize_popularity(pop):
         if pop <= low_thresh:
@@ -117,114 +106,80 @@ def load_data():
         else:
             return np.nan
 
-    df_clean['pop_category'] = df_clean['popularity'].apply(categorize_popularity)
+    df_clean['pop_category'] = df_clean['track_popularity'].apply(categorize_popularity)
     df_clean = df_clean.dropna(subset=['pop_category'])
 
     label_enc = LabelEncoder()
     df_clean['pop_encoded'] = label_enc.fit_transform(df_clean['pop_category'])
     return df, df_clean, label_enc
 
-df, df_clean, label_enc = load_data()
+# --- Main App ---
+df_raw, df_filtered, label_encoder = load_data()
 
-@st.cache_resource
-def train_model(df_clean):
-    tfidf_genre = TfidfVectorizer()
-    tfidf_subgenre = TfidfVectorizer()
-    tfidf_title = TfidfVectorizer()
-    tfidf_artist = TfidfVectorizer()
-    tfidf_lyrics = TfidfVectorizer(max_features=500)
-    tfidf_album = TfidfVectorizer()
+st.title("🎵 Rekomendasi Musik & Prediksi Popularitas")
 
-    genre_tfidf = tfidf_genre.fit_transform(df_clean['genre'])
-    subgenre_tfidf = tfidf_subgenre.fit_transform(df_clean['subgenre'])
-    title_tfidf = tfidf_title.fit_transform(df_clean['judul_musik'])
-    artist_tfidf = tfidf_artist.fit_transform(df_clean['artist'])
-    lyrics_tfidf = tfidf_lyrics.fit_transform(df_clean['lyrics'].fillna(''))
-    album_tfidf = tfidf_album.fit_transform(df_clean['album'])
+# --- Eksplorasi Data ---
+with st.expander("📈 Lihat Statistik Data Lengkap"):
+    st.dataframe(df_raw.head(20))
+    st.markdown("### Statistik Deskriptif")
+    st.write(df_raw.describe())
+    st.markdown("### Distribusi Genre Playlist")
+    st.bar_chart(df_raw['playlist_genre'].value_counts())
 
-    features_num = ['tempo', 'duration_ms', 'energy', 'danceability']
-    scaler = MinMaxScaler()
-    df_num_scaled = pd.DataFrame(scaler.fit_transform(df_clean[features_num]), columns=features_num, index=df_clean.index)
+# --- Sidebar ---
+st.sidebar.header("🔎 Filter Musik")
+judul_pilihan = st.sidebar.selectbox("Pilih Judul Lagu", options=df_filtered['track_name'].unique())
 
-    X = pd.concat([
-        pd.DataFrame(genre_tfidf.toarray(), index=df_clean.index),
-        pd.DataFrame(subgenre_tfidf.toarray(), index=df_clean.index),
-        pd.DataFrame(title_tfidf.toarray(), index=df_clean.index),
-        pd.DataFrame(artist_tfidf.toarray(), index=df_clean.index),
-        pd.DataFrame(lyrics_tfidf.toarray(), index=df_clean.index),
-        pd.DataFrame(album_tfidf.toarray(), index=df_clean.index),
-        df_num_scaled
-    ], axis=1)
+# --- Fitur numerik dari seluruh fitur yang tersedia ---
+fitur_numerik = df_filtered.select_dtypes(include=[np.number]).columns.tolist()
+if 'pop_encoded' in fitur_numerik:
+    fitur_numerik.remove('pop_encoded')
 
-    y = df_clean['pop_encoded']
-    X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, test_size=0.2, random_state=42)
+# --- Rekomendasi berdasarkan kemiripan fitur ---
+scaler = MinMaxScaler()
+X_scaled = scaler.fit_transform(df_filtered[fitur_numerik])
+sim_matrix = cosine_similarity(X_scaled)
 
-    model = RandomForestClassifier(random_state=42)
-    model.fit(X_train, y_train)
-    return model, tfidf_genre, tfidf_subgenre, tfidf_title, tfidf_artist, tfidf_lyrics, tfidf_album, scaler, title_tfidf
+idx_lagu = df_filtered[df_filtered['track_name'] == judul_pilihan].index[0]
+sim_scores = list(enumerate(sim_matrix[idx_lagu]))
+sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
+similar_indexes = [i[0] for i in sim_scores[1:6]]
 
-model, tfidf_genre, tfidf_subgenre, tfidf_title, tfidf_artist, tfidf_lyrics, tfidf_album, scaler, title_tfidf = train_model(df_clean)
-
-def music_card(title, artist, popularity):
+st.subheader("🎧 Lagu Mirip Berdasarkan Seluruh Fitur Numerik")
+for i in similar_indexes:
+    lagu = df_filtered.iloc[i]
     st.markdown(f"""
-    <div class=\"music-card\">
-        <div class=\"music-cover\">🎵</div>
-        <div class=\"music-info\">
-            <p class=\"music-title\">{title}</p>
-            <p class=\"music-artist\">{artist}</p>
+    <div class="music-card">
+        <div class="music-cover">🎵</div>
+        <div class="music-info">
+            <p class="music-title">{lagu['track_name']}</p>
+            <p class="music-artist">{lagu['track_artist']} - {lagu['track_album_name']}</p>
         </div>
-        <div class=\"popularity\">{int(popularity)}</div>
+        <div class="popularity">🔥 {lagu['track_popularity']}</div>
     </div>
     """, unsafe_allow_html=True)
 
-st.title("\U0001F3B5 Sistem Rekomendasi Musik Spotify")
-judul_list = df_clean['judul_musik'].dropna().unique()
-pilihan = st.selectbox("Pilih judul lagu", options=judul_list)
-manual_input = st.text_input("Atau masukkan manual judul lagu")
-judul = manual_input if manual_input.strip() else pilihan
+# --- Prediksi popularitas ---
+X = df_filtered[fitur_numerik]
+y = df_filtered['pop_encoded']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+model = RandomForestClassifier()
+model.fit(X_train, y_train)
 
-if st.button("Rekomendasikan"):
-    judul_vector = tfidf_title.transform([judul])
-    similarities = cosine_similarity(judul_vector, title_tfidf).flatten()
-    top_index = similarities.argsort()[::-1][0]
-    lagu = df_clean.iloc[top_index]
-
-    X_input = np.hstack([
-        tfidf_genre.transform([lagu['genre']]).toarray(),
-        tfidf_subgenre.transform([lagu['subgenre']]).toarray(),
-        tfidf_title.transform([lagu['judul_musik']]).toarray(),
-        tfidf_artist.transform([lagu['artist']]).toarray(),
-        tfidf_lyrics.transform([lagu['lyrics'] if pd.notna(lagu['lyrics']) else '']).toarray(),
-        tfidf_album.transform([lagu['album']]).toarray(),
-        scaler.transform([[lagu['tempo'], lagu['duration_ms'], lagu['energy'], lagu['danceability']]])
-    ])
-
-    pred = model.predict(X_input)[0]
-    kategori = label_enc.inverse_transform([pred])[0]
-
-    st.success(f"Judul terdekat: **{lagu['judul_musik']}** oleh **{lagu['artist']}**")
-    st.info(f"Genre: **{lagu['genre']}** | Subgenre: **{lagu['subgenre']}**")
-    st.success(f"Prediksi popularitas: **{kategori}**")
-
-    df_rekom_genre = df_clean[df_clean['genre'].str.lower() == lagu['genre'].lower()].sort_values(by='popularity', ascending=False).head(5)
-    st.subheader("\U0001F3A7 Rekomendasi Berdasarkan Genre")
-    for _, row in df_rekom_genre.iterrows():
-        music_card(row['judul_musik'], row['artist'], row['popularity'])
-
-    top_indices = similarities.argsort()[::-1][1:6]
-    df_rekom_judul = df_clean.iloc[top_indices]
-    st.subheader("\U0001F4D6 Rekomendasi Berdasarkan Kemiripan Judul")
-    for _, row in df_rekom_judul.iterrows():
-        music_card(row['judul_musik'], row['artist'], row['popularity'])
-
-    if pd.notna(lagu['lyrics']) and lagu['lyrics'].strip():
-        lyric_vector = tfidf_lyrics.transform([lagu['lyrics']])
-        lyric_similarities = cosine_similarity(lyric_vector, tfidf_lyrics.transform(df_clean['lyrics'].fillna(''))).flatten()
-        top_lyric_indices = lyric_similarities.argsort()[::-1][1:6]
-        df_rekom_lyrics = df_clean.iloc[top_lyric_indices]
-
-        st.subheader("\U0001F3BC Rekomendasi Berdasarkan Lirik")
-        for _, row in df_rekom_lyrics.iterrows():
-            music_card(row['judul_musik'], row['artist'], row['popularity'])
+st.subheader("📊 Prediksi Popularitas Musik Berdasarkan Fitur Numerik")
+fitur_input = []
+st.markdown("Masukkan nilai untuk semua fitur numerik:")
+for fitur in fitur_numerik:
+    min_val = float(df_filtered[fitur].min())
+    max_val = float(df_filtered[fitur].max())
+    mean_val = float(df_filtered[fitur].mean())
+    if "_ms" in fitur or "duration" in fitur:
+        val = st.slider(fitur, int(min_val), int(max_val), int(mean_val))
     else:
-        st.info("Lagu ini tidak memiliki lirik yang dapat dibandingkan.")
+        val = st.slider(fitur, float(min_val), float(max_val), float(mean_val))
+    fitur_input.append(val)
+
+fitur_input = np.array([fitur_input])
+prediksi = model.predict(fitur_input)[0]
+kategori = label_encoder.inverse_transform([prediksi])[0]
+st.success(f"Prediksi popularitas lagu: {kategori}")
