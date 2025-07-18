@@ -86,8 +86,8 @@ st.markdown("""
 def load_data(uploaded_zip):
     with zipfile.ZipFile(uploaded_zip, 'r') as z:
         csv_filename = [f for f in z.namelist() if f.endswith('.csv')][0]
-        with z.open(csv_filename) as f:
-            df = pd.read_csv(f)
+        with z.open(spotify_songs.csv.zip) as f:
+            df = pd.read_csv(spotify_songs.csv.zip)
 
     fitur_wajib = [
         "track_popularity", "playlist_genre", "playlist_subgenre", "tempo",
