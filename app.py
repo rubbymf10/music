@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import zipfile
-import os
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
@@ -82,17 +81,18 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- Load Data from ZIP ---
+# --- Load Data from ZIP upload ---
 @st.cache_data
-
-def load_data():
-    zip_path = "spotify_songs.csv.zip"
-    with zipfile.ZipFile(zip_path, 'r') as z:
-        csv_filename = z.namelist()[0]
+def load_data(uploaded_zip):
+    with zipfile.ZipFile(uploaded_zip, 'r') as z:
+        csv_filename = [f for f in z.namelist() if f.endswith('.csv')][0]
         with z.open(csv_filename) as f:
             df = pd.read_csv(f)
 
-    fitur_wajib = ["track_popularity", "playlist_genre", "playlist_subgenre", "tempo", "duration_ms", "energy", "danceability"]
+    fitur_wajib = [
+        "track_popularity", "playlist_genre", "playlist_subgenre", "tempo",
+        "duration_ms", "energy", "danceability"
+    ]
     df_clean = df.dropna(subset=fitur_wajib)
 
     low_thresh = df_clean['track_popularity'].quantile(0.33)
@@ -114,9 +114,15 @@ def load_data():
     return df, df_clean, label_enc
 
 # --- Main App ---
-df_raw, df_filtered, label_encoder = load_data()
-
 st.title("🎵 Rekomendasi Musik & Prediksi Popularitas")
+
+uploaded_zip = st.file_uploader("📁 Upload file ZIP berisi `spotify_songs.csv`", type="zip")
+if uploaded_zip is None:
+    st.warning("Silakan upload file ZIP terlebih dahulu.")
+    st.stop()
+
+# Load data dari file ZIP yang diupload
+df_raw, df_filtered, label_encoder = load_data(uploaded_zip)
 
 # --- Eksplorasi Data ---
 with st.expander("📈 Lihat Statistik Data Lengkap"):
