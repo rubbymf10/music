@@ -9,15 +9,15 @@ from sklearn.ensemble import RandomForestClassifier
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 
-# ✅ Ganti dengan ID & Secret kamu sendiri
-SPOTIPY_CLIENT_ID = "masukkan_client_id_kamu"
-SPOTIPY_CLIENT_SECRET = "masukkan_client_secret_kamu"
+# Konfigurasi Spotify API (langsung hardcode)
+SPOTIPY_CLIENT_ID = "cfcf66dfcecd4bc3bff4cd3ad52362f9"
+SPOTIPY_CLIENT_SECRET = "3a27fbc9b3a3425c9d523ca62c5226c4"
 
-# Inisialisasi Spotify API
 sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(
     client_id=SPOTIPY_CLIENT_ID,
     client_secret=SPOTIPY_CLIENT_SECRET
 ))
+
 
 @st.cache_data
 def load_data():
