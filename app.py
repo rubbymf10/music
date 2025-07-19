@@ -8,6 +8,14 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.ensemble import RandomForestClassifier
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
+import streamlit as st
+
+# Coba manual untuk testing
+SPOTIPY_CLIENT_ID = cfcf66dfcecd4bc3bff4cd3ad52362f9
+SPOTIPY_CLIENT_SECRET = 3a27fbc9b3a3425c9d523ca62c5226c4
+
+st.write("CLIENT ID:", SPOTIPY_CLIENT_ID[:10])  # print sebagian saja
+
 
 # ==================== Setup Spotify API ====================
 SPOTIPY_CLIENT_ID = st.secrets["SPOTIPY_CLIENT_ID"]
