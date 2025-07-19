@@ -1,119 +1,109 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import zipfile
 import os
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestClassifier
-
-# Load Data
-def load_data():
-    with zipfile.ZipFile("spotify_songs.csv.zip", 'r') as zip_ref:
-        zip_ref.extractall("data")
-    df = pd.read_csv("data/spotify_songs.csv")
-    return df
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
 
 @st.cache_data
 
-def preprocess(df):
+def load_data():
+    if not os.path.exists("spotify_songs.csv"):
+        with zipfile.ZipFile("spotify_songs.csv.zip", 'r') as zip_ref:
+            zip_ref.extractall()
+    df = pd.read_csv("spotify_songs.csv")
     df.dropna(subset=['track_name', 'track_artist', 'playlist_genre', 'lyrics'], inplace=True)
-    df = df.drop_duplicates(subset=['track_id'])
     return df
 
-def get_top_popular(df, n=10):
-    return df.sort_values(by='track_popularity', ascending=False).head(n)
+df = load_data()
 
-def get_top_popular_by_genre(df, n=5):
-    genres = df['playlist_genre'].unique()
-    result = pd.DataFrame()
-    for genre in genres:
-        top = df[df['playlist_genre'] == genre].sort_values(by='track_popularity', ascending=False).head(n)
-        result = pd.concat([result, top])
-    return result
+# Labeling popularitas
+pop_threshold = df['track_popularity'].median()
+df['popularity_label'] = df['track_popularity'].apply(lambda x: 'High' if x >= pop_threshold else 'Low')
 
-def recommend(df, title, manual_input=None):
-    if manual_input:
-        input_text = manual_input
-    else:
-        input_text = title
+# TF-IDF Vectorizer untuk judul
+tfidf_vectorizer = TfidfVectorizer(stop_words='english')
+tfidf_matrix = tfidf_vectorizer.fit_transform(df['track_name'])
 
-    tfidf = TfidfVectorizer(stop_words='english')
-    tfidf_matrix = tfidf.fit_transform(df['track_name'])
+# Encode fitur untuk RF
+feature_cols = ['danceability', 'energy', 'loudness', 'speechiness', 'acousticness', 'instrumentalness', 'liveness', 'valence', 'tempo']
+x = df[feature_cols]
+y = df['popularity_label']
 
-    if title not in df['track_name'].values:
-        st.warning("Judul lagu tidak ditemukan. Menampilkan rekomendasi berdasarkan input manual.")
-        selected_index = None
-    else:
-        selected_index = df[df['track_name'] == title].index[0]
+rf_model = RandomForestClassifier(random_state=42)
+rf_model.fit(x, y)
 
-    le = LabelEncoder()
-    df['popularity_class'] = pd.qcut(df['track_popularity'], q=2, labels=['Low', 'High'])
-
-    genre_based = df[df['playlist_genre'] == df.loc[selected_index, 'playlist_genre']] if selected_index is not None else df
-    genre_based = genre_based.copy()
-
-    tfidf_genre = tfidf.transform(genre_based['track_name'])
-    cosine_genre = cosine_similarity(tfidf.transform([input_text]), tfidf_genre).flatten()
-    genre_based['similarity'] = cosine_genre
-    genre_based = genre_based.sort_values(by=['popularity_class', 'similarity'], ascending=[False, False]).head(5)
-
-    cosine_all = cosine_similarity(tfidf.transform([input_text]), tfidf_matrix).flatten()
-    df['similarity'] = cosine_all
-    title_based = df.sort_values(by=['popularity_class', 'similarity'], ascending=[False, False]).head(5)
-
-    return genre_based, title_based
-
-# Main Streamlit App
-st.set_page_config(page_title="Spotify Music Recommendation", layout="wide")
-
-menu = st.sidebar.selectbox("Menu", ["Home", "Rekomendasi", "Histori"])
-
+# Simpan histori
 if 'history' not in st.session_state:
     st.session_state.history = []
 
-df = preprocess(load_data())
+st.set_page_config(page_title="Spotify Music Recommender", layout="wide")
 
-if menu == "Home":
-    st.title("🎵 Musik Terpopuler")
-    st.subheader("Top 10 Musik Terpopuler")
-    top = get_top_popular(df)
-    st.dataframe(top[['track_name', 'track_artist', 'track_popularity']])
+menu = st.sidebar.selectbox("Pilih Halaman", ["Beranda", "Rekomendasi", "Histori"])
 
-    st.subheader("Top 5 Musik per Genre")
-    genre_top = get_top_popular_by_genre(df)
-    st.dataframe(genre_top[['playlist_genre', 'track_name', 'track_artist', 'track_popularity']])
+if menu == "Beranda":
+    st.title("🎵 10 Musik Terpopuler")
+    top10 = df.sort_values(by='track_popularity', ascending=False).head(10)
+    st.dataframe(top10[['track_name', 'track_artist', 'track_popularity']])
+
+    st.subheader("🎶 5 Musik Terpopuler dari Setiap Genre")
+    genres = df['playlist_genre'].unique()
+    for genre in genres:
+        st.markdown(f"#### Genre: {genre}")
+        top_by_genre = df[df['playlist_genre'] == genre].sort_values(by='track_popularity', ascending=False).head(5)
+        st.dataframe(top_by_genre[['track_name', 'track_artist', 'track_popularity']])
 
 elif menu == "Rekomendasi":
     st.title("🔍 Rekomendasi Musik")
-    judul = st.selectbox("Pilih Judul Lagu", df['track_name'].unique()[:50])
-    manual_input = st.text_input("Atau masukkan judul lagu secara manual:")
+    lagu_list = df['track_name'].unique()[:50]
+    judul_input = st.selectbox("Pilih Judul Lagu", lagu_list)
+    manual_input = st.text_input("Atau ketik judul lagu secara manual")
+    genre_input = st.selectbox("Pilih Genre Lagu", df['playlist_genre'].unique())
 
-    if st.button("Rekomendasikan"):
-        genre_rec, title_rec = recommend(df, judul, manual_input)
+    input_judul = manual_input if manual_input else judul_input
 
-        result = {
-            "input": manual_input if manual_input else judul,
-            "genre_rec": genre_rec[['track_name', 'track_artist', 'playlist_genre', 'track_album_name', 'popularity_class']],
-            "title_rec": title_rec[['track_name', 'track_artist', 'playlist_genre', 'track_album_name', 'popularity_class']]
-        }
-        st.session_state.history.append(result)
+    if st.button("Cari Rekomendasi"):
+        if input_judul not in df['track_name'].values:
+            st.warning("Judul tidak ditemukan dalam data.")
+        else:
+            selected_index = df[df['track_name'] == input_judul].index[0]
+            cosine_sim = cosine_similarity(tfidf_matrix[selected_index], tfidf_matrix).flatten()
+            similar_indices = cosine_sim.argsort()[-11:-1][::-1]
+            genre_sama = df[df['playlist_genre'] == genre_input].sort_values(by='track_popularity', ascending=False).head(10)
+            judul_sama = df.iloc[similar_indices]
 
-        st.subheader("🎧 Rekomendasi Berdasarkan Genre")
-        st.dataframe(result['genre_rec'])
+            genre_sama['popularity_pred'] = rf_model.predict(genre_sama[feature_cols])
+            judul_sama['popularity_pred'] = rf_model.predict(judul_sama[feature_cols])
 
-        st.subheader("🎧 Rekomendasi Berdasarkan Judul")
-        st.dataframe(result['title_rec'])
+            genre_sama = genre_sama.sort_values(by='popularity_pred', ascending=False)
+            judul_sama = judul_sama.sort_values(by='popularity_pred', ascending=False)
+
+            st.subheader("🎧 Rekomendasi Berdasarkan Genre")
+            st.dataframe(genre_sama[['track_name', 'track_artist', 'track_album_name', 'playlist_genre', 'popularity_pred']])
+
+            st.subheader("🎧 Rekomendasi Berdasarkan Kemiripan Judul")
+            st.dataframe(judul_sama[['track_name', 'track_artist', 'track_album_name', 'playlist_genre', 'popularity_pred']])
+
+            st.session_state.history.append({
+                'input': input_judul,
+                'genre_result': genre_sama[['track_name', 'track_artist']].values.tolist(),
+                'judul_result': judul_sama[['track_name', 'track_artist']].values.tolist()
+            })
 
 elif menu == "Histori":
-    st.title("📜 Histori Rekomendasi")
-    if st.session_state.history:
-        for i, item in enumerate(reversed(st.session_state.history)):
-            st.write(f"### 🔍 Hasil Rekomendasi Ke-{len(st.session_state.history) - i}")
-            st.markdown(f"**Input Lagu:** {item['input']}")
-            st.markdown("**Berdasarkan Genre:**")
-            st.dataframe(item['genre_rec'])
-            st.markdown("**Berdasarkan Judul:**")
-            st.dataframe(item['title_rec'])
+    st.title("🕒 Histori Pencarian")
+    if len(st.session_state.history) == 0:
+        st.info("Belum ada histori pencarian.")
     else:
-        st.info("Belum ada histori rekomendasi.")
+        for idx, item in enumerate(st.session_state.history[::-1]):
+            st.markdown(f"### 🎼 Input: {item['input']}")
+            st.markdown("**🎶 Hasil Berdasarkan Genre:**")
+            for track, artist in item['genre_result']:
+                st.markdown(f"- {track} oleh {artist}")
+            st.markdown("**🎶 Hasil Berdasarkan Judul:**")
+            for track, artist in item['judul_result']:
+                st.markdown(f"- {track} oleh {artist}")
