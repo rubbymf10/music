@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 import os
 
 # Load dataset
-DATA_DIR = "data"
+DATA_DIR = "https://github.com/rubbymf10/music/tree/main"
 ZIP_FILE_NAME = "spotify_songs.csv.zip"
 data = load_data()
 
