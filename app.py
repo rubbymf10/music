@@ -8,102 +8,114 @@ import zipfile
 import os
 
 # === CSS ===
-spotify_css = """
+st.markdown("""
 <style>
-/* ==== GLOBAL ==== */
+/* === FONTS & RESET === */
 html, body, .stApp {
     background-color: #121212;
     color: #FFFFFF;
     font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
+    transition: all 0.3s ease-in-out;
 }
 
-/* ==== SIDEBAR ==== */
-section[data-testid="stSidebar"] {
-    background-color: #191414;
-    border-right: 1px solid #2a2a2a;
-}
-section[data-testid="stSidebar"] h1,
-section[data-testid="stSidebar"] h2,
-section[data-testid="stSidebar"] h3 {
-    color: #1DB954;
-}
-.css-1v0mbdj, .css-1oe5cao {
-    color: white !important;
-}
-
-/* ==== HEADER & TITLES ==== */
+/* === LOGO / TITLE === */
 h1, h2, h3, h4 {
     color: #1DB954;
-    margin-top: 0.5em;
-    margin-bottom: 0.3em;
+    font-weight: 700;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    animation: fadein 1s ease-in-out;
+}
+@keyframes fadein {
+    0% {opacity: 0; transform: translateY(-10px);}
+    100% {opacity: 1; transform: translateY(0);}
 }
 
-/* ==== BUTTONS ==== */
+/* === SIDEBAR === */
+section[data-testid="stSidebar"] {
+    background-color: #181818;
+    border-right: 1px solid #282828;
+}
+section[data-testid="stSidebar"] .css-1v0mbdj {
+    color: #1DB954 !important;
+    font-weight: bold;
+}
+
+/* === BUTTONS === */
 .stButton > button {
     background-color: #1DB954;
-    color: black;
-    border-radius: 50px;
-    border: none;
-    padding: 0.6em 1.5em;
+    color: #000;
     font-weight: bold;
-    transition: all 0.3s ease;
+    border-radius: 50px;
+    padding: 0.6rem 1.5rem;
+    border: none;
+    transition: 0.3s ease-in-out;
+    box-shadow: 0 0 0 rgba(0,0,0,0);
 }
 .stButton > button:hover {
     background-color: #1ed760;
+    box-shadow: 0 0 10px #1DB954;
     transform: scale(1.05);
-    box-shadow: 0 0 10px rgba(29, 185, 84, 0.5);
 }
 
-/* ==== INPUTS ==== */
-input, textarea, .stTextInput > div > input {
-    background-color: #2a2a2a !important;
+/* === INPUTS / TEXTAREA === */
+input, textarea {
+    background-color: #2A2A2A !important;
     color: white !important;
-    border: 1px solid #444 !important;
+    border: 1px solid #333 !important;
     border-radius: 8px;
     padding: 0.5em;
 }
-.stSelectbox > div {
-    background-color: #2a2a2a !important;
-    border-radius: 8px;
-}
-.css-1inwz65 {
+.stTextInput > div > input {
+    background-color: #2A2A2A !important;
     color: white !important;
 }
 
-/* ==== TABS ==== */
-.stTabs [role="tablist"] {
-    border-bottom: 1px solid #2a2a2a;
-}
-.stTabs [role="tab"] {
-    background: #1c1c1c;
-    color: #bbb;
-    padding: 0.5em 1em;
-    margin-right: 5px;
-    border-radius: 10px 10px 0 0;
-    transition: background 0.3s ease;
-}
-.stTabs [aria-selected="true"] {
-    background: #1DB954;
-    color: black;
-    font-weight: bold;
-}
-
-/* ==== TABLES / DATAFRAMES ==== */
-.css-1r6slb0, .css-1r6slb0 .table, .dataframe {
-    background-color: #181818 !important;
+/* === SELECTBOX === */
+.css-1cpxqw2, .stSelectbox > div {
+    background-color: #2A2A2A !important;
     color: white !important;
     border-radius: 10px;
-    border: 1px solid #333;
-    font-size: 0.9em;
 }
-thead th {
+
+/* === TABS === */
+.stTabs [role="tablist"] {
+    border-bottom: 1px solid #333;
+    margin-bottom: 1rem;
+}
+.stTabs [role="tab"] {
+    background-color: #181818;
+    color: #bbb;
+    padding: 0.6rem 1rem;
+    margin-right: 5px;
+    border: 1px solid transparent;
+    border-radius: 10px 10px 0 0;
+    transition: 0.3s ease;
+}
+.stTabs [aria-selected="true"] {
+    background-color: #1DB954;
+    color: black;
+    font-weight: bold;
+    border: none;
+}
+
+/* === DATAFRAMES / TABLE === */
+.css-1r6slb0, .dataframe {
+    background-color: #1c1c1c !important;
+    color: white !important;
+    border-radius: 10px;
+    font-size: 0.92em;
+    border: 1px solid #333;
+    animation: fadein 0.8s ease-in-out;
+}
+thead {
     background-color: #1DB954 !important;
     color: black !important;
 }
 
-/* ==== SCROLLBAR ==== */
+/* === SCROLLBAR === */
 ::-webkit-scrollbar {
-    width: 10px;
+    width: 8px;
 }
 ::-webkit-scrollbar-track {
     background: #121212;
@@ -116,16 +128,29 @@ thead th {
     background: #1ed760;
 }
 
-/* ==== SPACING & SMOOTH UI ==== */
+/* === CUSTOM SPACING === */
 .block-container {
-    padding-top: 2rem;
-    padding-bottom: 2rem;
-    padding-left: 3rem;
-    padding-right: 3rem;
+    padding: 2rem 3rem;
+}
+
+.stRadio > div {
+    gap: 10px;
+}
+
+/* === SECTION BORDER === */
+hr {
+    border: none;
+    height: 2px;
+    background-color: #1DB954;
+    margin: 2rem 0;
+}
+
+/* === FADE ANIMATION === */
+.fade-in {
+    animation: fadein 1s ease-in-out;
 }
 </style>
-"""
-st.markdown(spotify_css, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 # === Load Dataset ===
 @st.cache_data
