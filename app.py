@@ -7,6 +7,92 @@ from sklearn.preprocessing import LabelEncoder
 import zipfile
 import os
 
+# === CSS ===
+spotify_css = """
+<style>
+/* Background dan font */
+body, .stApp {
+    background-color: #121212;
+    color: #FFFFFF;
+    font-family: 'Helvetica Neue', sans-serif;
+}
+
+/* Header dan sidebar */
+header, .css-18e3th9, .css-1d391kg, .css-1lcbmhc, .css-1avcm0n {
+    background-color: #1DB954 !important;
+    color: white;
+}
+
+/* Sidebar */
+.css-6qob1r.e1fqkh3o3 {
+    background-color: #1c1c1c;
+    border-right: 1px solid #333;
+}
+.css-6qob1r.e1fqkh3o3 h1, .css-6qob1r.e1fqkh3o3 h2 {
+    color: #1DB954;
+}
+
+/* Tombol & widget */
+button, .stButton > button {
+    background-color: #1DB954;
+    color: black;
+    border-radius: 999px;
+    padding: 0.5em 1.5em;
+    border: none;
+}
+button:hover {
+    background-color: #1ed760;
+    color: black;
+}
+
+/* Judul dan Subjudul */
+h1, h2, h3, h4, h5, h6 {
+    color: #1DB954;
+}
+
+/* DataFrame dan tabel */
+.css-1r6slb0, .css-1r6slb0 .table {
+    background-color: #212121 !important;
+    color: white !important;
+}
+
+/* Tabs */
+.stTabs [role="tablist"] {
+    border-bottom: 1px solid #333;
+}
+.stTabs [role="tab"] {
+    background-color: #1c1c1c;
+    color: white;
+    border: 1px solid #333;
+    margin-right: 5px;
+}
+.stTabs [aria-selected="true"] {
+    background-color: #1DB954;
+    color: black;
+}
+
+/* Input, selectbox */
+input, select, textarea {
+    background-color: #2a2a2a !important;
+    color: white !important;
+    border: 1px solid #444 !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #121212;
+}
+::-webkit-scrollbar-thumb {
+    background: #1DB954;
+}
+</style>
+"""
+st.markdown(spotify_css, unsafe_allow_html=True)
+
+
 # === Load Dataset ===
 @st.cache_data
 def load_data():
