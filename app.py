@@ -10,88 +10,122 @@ import os
 # === CSS ===
 spotify_css = """
 <style>
-/* Background dan font */
-body, .stApp {
+/* ==== GLOBAL ==== */
+html, body, .stApp {
     background-color: #121212;
     color: #FFFFFF;
-    font-family: 'Helvetica Neue', sans-serif;
+    font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
 }
 
-/* Header dan sidebar */
-header, .css-18e3th9, .css-1d391kg, .css-1lcbmhc, .css-1avcm0n {
-    background-color: #1DB954 !important;
-    color: white;
+/* ==== SIDEBAR ==== */
+section[data-testid="stSidebar"] {
+    background-color: #191414;
+    border-right: 1px solid #2a2a2a;
 }
-
-/* Sidebar */
-.css-6qob1r.e1fqkh3o3 {
-    background-color: #1c1c1c;
-    border-right: 1px solid #333;
-}
-.css-6qob1r.e1fqkh3o3 h1, .css-6qob1r.e1fqkh3o3 h2 {
+section[data-testid="stSidebar"] h1,
+section[data-testid="stSidebar"] h2,
+section[data-testid="stSidebar"] h3 {
     color: #1DB954;
 }
-
-/* Tombol & widget */
-button, .stButton > button {
-    background-color: #1DB954;
-    color: black;
-    border-radius: 999px;
-    padding: 0.5em 1.5em;
-    border: none;
-}
-button:hover {
-    background-color: #1ed760;
-    color: black;
-}
-
-/* Judul dan Subjudul */
-h1, h2, h3, h4, h5, h6 {
-    color: #1DB954;
-}
-
-/* DataFrame dan tabel */
-.css-1r6slb0, .css-1r6slb0 .table {
-    background-color: #212121 !important;
+.css-1v0mbdj, .css-1oe5cao {
     color: white !important;
 }
 
-/* Tabs */
-.stTabs [role="tablist"] {
-    border-bottom: 1px solid #333;
-}
-.stTabs [role="tab"] {
-    background-color: #1c1c1c;
-    color: white;
-    border: 1px solid #333;
-    margin-right: 5px;
-}
-.stTabs [aria-selected="true"] {
-    background-color: #1DB954;
-    color: black;
+/* ==== HEADER & TITLES ==== */
+h1, h2, h3, h4 {
+    color: #1DB954;
+    margin-top: 0.5em;
+    margin-bottom: 0.3em;
 }
 
-/* Input, selectbox */
-input, select, textarea {
+/* ==== BUTTONS ==== */
+.stButton > button {
+    background-color: #1DB954;
+    color: black;
+    border-radius: 50px;
+    border: none;
+    padding: 0.6em 1.5em;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+.stButton > button:hover {
+    background-color: #1ed760;
+    transform: scale(1.05);
+    box-shadow: 0 0 10px rgba(29, 185, 84, 0.5);
+}
+
+/* ==== INPUTS ==== */
+input, textarea, .stTextInput > div > input {
     background-color: #2a2a2a !important;
     color: white !important;
     border: 1px solid #444 !important;
+    border-radius: 8px;
+    padding: 0.5em;
+}
+.stSelectbox > div {
+    background-color: #2a2a2a !important;
+    border-radius: 8px;
+}
+.css-1inwz65 {
+    color: white !important;
 }
 
-/* Scrollbar */
+/* ==== TABS ==== */
+.stTabs [role="tablist"] {
+    border-bottom: 1px solid #2a2a2a;
+}
+.stTabs [role="tab"] {
+    background: #1c1c1c;
+    color: #bbb;
+    padding: 0.5em 1em;
+    margin-right: 5px;
+    border-radius: 10px 10px 0 0;
+    transition: background 0.3s ease;
+}
+.stTabs [aria-selected="true"] {
+    background: #1DB954;
+    color: black;
+    font-weight: bold;
+}
+
+/* ==== TABLES / DATAFRAMES ==== */
+.css-1r6slb0, .css-1r6slb0 .table, .dataframe {
+    background-color: #181818 !important;
+    color: white !important;
+    border-radius: 10px;
+    border: 1px solid #333;
+    font-size: 0.9em;
+}
+thead th {
+    background-color: #1DB954 !important;
+    color: black !important;
+}
+
+/* ==== SCROLLBAR ==== */
 ::-webkit-scrollbar {
-    width: 8px;
+    width: 10px;
 }
 ::-webkit-scrollbar-track {
     background: #121212;
 }
 ::-webkit-scrollbar-thumb {
     background: #1DB954;
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #1ed760;
+}
+
+/* ==== SPACING & SMOOTH UI ==== */
+.block-container {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+    padding-left: 3rem;
+    padding-right: 3rem;
 }
 </style>
 """
 st.markdown(spotify_css, unsafe_allow_html=True)
-
 
 # === Load Dataset ===
 @st.cache_data
